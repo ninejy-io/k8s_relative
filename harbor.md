@@ -17,8 +17,9 @@ tar zxf harbor-offline-installer-v1.6.1.tgz
 ###### 如果不购买证书，也可以自己手动生成证书 https://coding.net/u/aminglinux/p/nginx/git/blob/master/ssl/key.md
 
 #### 4.安装harbor
-###### 进入harbor目录修改配置文件以下几项 cd harbor; vim harbor.cfg
+###### 进入harbor目录修改配置文件以下几项
 ```shell
+# cd harbor; vim harbor.cfg
 hostname = harbor.dog128.cn
 ui_url_protocol = https
 ssl_cert = /data/cert/dog128.pem
