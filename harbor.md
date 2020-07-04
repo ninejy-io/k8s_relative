@@ -27,7 +27,7 @@ openssl req -new -key server.key -out server.csr
 # Organization Unit Name: ninejy
 # Common Name: ninejy.io
 # Email Address: admin@ninejy.io
-cp  server.key  server.key.io
+cp server.key server.key.io
 openssl rsa -in server.key.io -out server.key
 openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 ```
