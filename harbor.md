@@ -14,8 +14,23 @@ tar zxf harbor-offline-installer-v1.6.1.tgz
 
 #### 3.准备ca证书
 ###### 可以购买域名，然后申请免费的域名证书 https://freessl.org/
-###### 如果不购买证书，也可以自己手动生成证书 https://coding.net/u/aminglinux/p/nginx/git/blob/master/ssl/key.md
-
+###### 如果不购买证书，也可以自己手动生成证书
+```bash
+openssl genrsa -des3 -out server.key 2048
+# 输入密码 123456
+openssl req -new -key server.key -out server.csr
+# 密码: 123456 
+# Country: CN
+# State: SH
+# Locality: SH
+# Organization Name: ninejy
+# Organization Unit Name: ninejy
+# Common Name: ninejy.io
+# Email Address: admin@ninejy.io
+cp  server.key  server.key.io
+openssl rsa -in server.key.io -out server.key
+openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+```
 #### 4.安装harbor
 ###### 进入harbor目录修改配置文件以下几项
 ```shell
