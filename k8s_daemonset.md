@@ -1,0 +1,22 @@
+#### DaemonSet
+---
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: daemonset-example
+  labels:
+    app: daemonset
+spec:
+  selector:
+    matchLabels:
+      name: daemonset-example
+  template:
+    metadata:
+      labels:
+        name: daemonset-example
+    spec:
+      containers:
+      - name: daemonset-example
+        image: harbor.ninejy.io/library/myapp:v1
+```

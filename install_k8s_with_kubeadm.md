@@ -1,6 +1,6 @@
 ## kubeadm 部署安装k8s集群
 ---
-### 基础设置
+### 基础设置 (OS Centos 7.5)
 #### 设置主机名及Host文件的相互解析
 ```bash
 hostnamectl set-hostname k8s-master01  # 192.168.0.61
