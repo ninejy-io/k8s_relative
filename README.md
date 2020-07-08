@@ -14,6 +14,12 @@
 
 - [Job/CronJob example](k8s_job_cronjob.md)
 
+- [Service](k8s_service.md)
+
+- [Ingress](k8s_ingress.md)
+
+- [存储 ConfigMap/Secret/Volume/PV/PVC](storage/)
+
 - [在k8s中部署lnmp](deploy_lnmp_on_k8s.md)
 
 - [promethus简单使用](promethus.md)
