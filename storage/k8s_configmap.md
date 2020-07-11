@@ -127,3 +127,60 @@ spec:
         name: special-config
   restartPolicy: Never
 ```
+
+#### ConfigMap 的热更新
+---
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-config
+  namespace: default
+data:
+  log_level: INFO
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - name: my-nginx
+        image: harbor.ninejy.io/library/myapp:v1
+        ports:
+        - containerPort: 80
+        volumesMounts:
+        - name: config-volume
+          mountPath: /etc/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: log-config
+```
+```bash
+kubectl exec `kubectl get pod -l run=my-nginx -o=name | cut -d "/" -f2` cat /etc/config/log_level
+```
+###### 修改 ConfigMap
+```bash
+kubectl edit configmap log-config
+```
+###### 修改`log_level`的值为`DEBUG` 等待大约 10 秒钟的时间, 再次查看环境变量的值
+```bash
+kubectl exec `kubectl get pod -l run=my-nginx -o=name | cut -d "/" -f2` cat /etc/config/log_level
+```
+<!--!!! 特别注意 ConfigMap 如果以 ENV 的方式挂载至容器, 修改 ConfigMap 并不会实现热更新 -->
+###### ConfigMap 更新后滚动更新 Pod
+###### 更新 ConfigMap 目前并不会触发相关 Pod 滚动更新, 可以通过修改 Pod annotations 的方式强制触发滚动更新
+```bash
+kubectl patch deployment my-nginx --patch '{"spec": {"template": {"metadata": {"annotations": {"version/config": "20200709"}}}}}'
+```
+###### 这个例子里我们在`.spec.template.metadata.annotations`中添加`version/config`每次通过修改`version/config`来触发滚动更新
+###### !!! 更新 ConfigMap 后:
+  - 使用该 ConfigMap 挂载的 Env 不会同步更新
+  - 使用该 ConfigMap 挂载的 Volume 中的数据需要一段时间 (大概10秒) 才能同步更新
