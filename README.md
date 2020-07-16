@@ -20,6 +20,8 @@
 
 - [存储 ConfigMap/Secret/Volume/PV/PVC](storage/)
 
+- [集群安全 认证/鉴权/准入控制](safety/)
+
 - [在k8s中部署lnmp](deploy_lnmp_on_k8s.md)
 
 - [promethus简单使用](promethus.md)

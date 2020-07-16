@@ -1,7 +1,7 @@
 #### Service 的概念
 ---
 ###### Kubernetes `Service`定义了这样一种抽象: 一个`Pod`的逻辑分组, 一种可以访问它们的策略 -- 通常成为微服务. 这组`Pod`能够被`Service`访问到, 通常是通过`Label Selector`
-  [svc原理](images/svc.png)
+  ![svc原理](images/svc.png)
 ###### Service 能够提供负载均衡的能力, 但是在使用上有以下限制:
   - 只提供 4 层负载均衡能力, 而没有 7 层功能, 但有时我们可能需要更多的匹配规则来转发请求, 这点上 4 层负载均衡是不支持的
 
@@ -12,21 +12,21 @@
   - NodePort: 在 ClusterIp 基础上为 Service 在每台机器上绑定一个端口, 这样就可以通过 NodeIP:NodePort 来访问该服务
   - LoadBalancer: 在 NodePort 的基础上, 借助 cloud provider 创建一个外部负载均衡器, 并将请求转发到 NodeIP:NodePort
   - ExternalName: 把集群外部的服务引入到集群内部来, 在集群内部直接使用. 没有任何类型代理被创建, 这只有 kubernetes 1.7 或更高版本的 kube-dns 才支持
-  [svc含义](images/svc1.png)
+    ![svc含义](images/svc1.png)
 
  #### VIP 和 Service 代理
- ---
+---
  ###### 在 Kubernetes 集群中, 每个 Node 运行一个`kube-proxy`进程. `kube-proxy`负责为`Service`实现了一种 VIP (虚拟IP) 的形式, 而不是`ExternalName`的形式. 在 Kubernetes v1.0 版本, 代理完全在 userspace. 在 Kubernetes v1.1 版本, 新增了 iptables 代理, 但并不是默认的运行模式. 从 Kubernetes v1.2 起, 默认就是 iptables 代理. 在 Kubernetes v1.8.0-beta.0 中, 添加了 ipvs 代理
  ###### 在 Kubernetes v1.14 版本开始默认使用 ipvs 代理
  ###### 在 Kubernetes v1.0 版本, `Service`是 4 层 (TCP/UDP over IP) 概念. 在 Kubernetes v1.1 版本, 新增了`Ingress`API (beta版), 用来表示 7 层 (HTTP) 服务
 
  #### 代理模式的分类
- ---
+---
    - 1. userspace 代理模式
-     [userspace 代理模式](images/userspace_proxy.png)
+     ![userspace 代理模式](images/userspace_proxy.png)
 
    - 2. iptables 代理模式
-     [iptables 代理模式](images/iptables_proxy.png)
+     ![iptables 代理模式](images/iptables_proxy.png)
 
    - 3. ipvs 代理模式
      这种模式, kube-proxy 会监视 Kubernetes `Service`对象和`Endpoints`, 调用`netlink`接口以相应地创建 ipvs 规则并定期与 Kubernetes `Service`对象和`Endpoints`对象同步 ipvs 规则, 以确保 ipvs 状态与期望一致. 访问服务时, 流量将被重定向到其中一个后端 Pod
@@ -38,7 +38,7 @@
        - `sed`: 最短期望延迟
        - `nq`: 不排队调度 
      <!-- 注意: ipvs 模式假定在运行 kube-proxy 之前在节点上都已经安装了 IPVS 内核模块. 当 kube-proxy 以 ipvs 代理模式启动时, kube-proxy 将验证节点上是否安装了 IPVS 模块, 如果未安装, 则 kube-proxy 将回退到 iptables 代理模式 -->
-     [ipvs 代理模式](images/ipvs_proxy.png)
+     ![ipvs 代理模式](images/ipvs_proxy.png)
 
 #### ClusterIP
 ---
