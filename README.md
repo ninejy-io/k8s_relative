@@ -18,9 +18,11 @@
 
 - [Ingress](k8s_ingress.md)
 
-- [存储 ConfigMap/Secret/Volume/PV/PVC](storage/)
+- [存储 ConfigMap / Secret / Volume / PV / PVC](storage/)
 
-- [集群安全 认证/鉴权/准入控制](safety/)
+- [集群安全 - 认证 / 鉴权 / 准入控制](safety/)
+
+- [Helm / Dashboard / Prometheus / EFK](other_functional_compontents/)
 
 - [在k8s中部署lnmp](deploy_lnmp_on_k8s.md)
 
