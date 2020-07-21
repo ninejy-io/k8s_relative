@@ -24,6 +24,8 @@
 
 - [Helm / Dashboard / Prometheus / EFK](other_functional_compontents/)
 
+- [修改证书有效期](k8s_cert_valid_date.md)
+
 - [在k8s中部署lnmp](deploy_lnmp_on_k8s.md)
 
 - [promethus简单使用](promethus.md)
