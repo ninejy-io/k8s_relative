@@ -99,7 +99,20 @@ rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
 yum --enablerepo=elrepo-kernel install -y kernel-lt
 # 设置开机从新内核启动
 grub2-set-default "CentOS Linux (4.4.182-1.el7.elrepo.x86_64) 7 (Core)" && reboot
+
+# 重启后安装内核源文件
+yum --enablerepo=elrepo-kernel install -y kernel-lt-devel-$(uname -r) kernel-lt-headers-$(uname -r)
 ```
+#### 关闭 NUMA
+---
+```bash
+cp /etc/default/grub{,.bak}
+vim /etc/default/grub  # 在 GRUB_CMDLINE_LINUX 一行添加 `numa=off` 参数
+cp /boot/grub2/grub.cfg{,.bak}
+
+grub2-mkconfig -o /boot/grub2/grub.cfg
+```
+
 ---
 #### kube-proxy 开启ipvs的前置条件
 ```bash
@@ -254,4 +267,21 @@ kubectl describe pod ${pod_name}
 kubectl logs -f ${pod_name} [-c ${container_name}]
 
 kubectl exec ${pod_name} [-c ${container_name}] -it -- /bin/sh
+
+kubectl set image deployment/nginx nginx=nginx:1.14.2  # 镜像版本升级
+kubectl set resources deployment/nginx -c nginx --limits=cpu=200m,memory=512Mi  # 更新CPU/memory资源限制
+kubectl rollout status deploy/nginx  # 查看更新状态
+kubectl rollout history deploy/nginx  # 查看更新历史
+kubectl rollout history deploy/nginx --revision=3  # 查看更新的详细内容
+kubectl rollout undo deploy/nginx --to-revision=2  # 回滚到2版本
+kubectl rollout pause deploy/nginx  # 暂停
+kubectl rollout resume deploy/nginx  # 恢复
+
+kubectl get cs  # 查看集群状态
+kubectl get endpoints kube-controller-manager --namespace=kube-system
+kubectl get endpoints kube-scheduler --namespace=kube-system
+kubectl cluster-info
+
+# 查看 etcd 集群状态
+kubectl -n kube-system exec etcd-k8s-master01 -- etcdctl --endpoints=https://192.168.0.61:2379 --ca-file=/etc/kubernetes/pki/etcd/ca.crt --cert-file=/etc/kubernetes/pki/etcd/server.crt --key-file=/etc/kubernetes/pki/etcd/server.key cluster-health
 ```
