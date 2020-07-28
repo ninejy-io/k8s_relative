@@ -153,7 +153,76 @@ rules:
 ###### Subjects 中 Users 使用字符串表示, 它可以是一个普通的名字字符串, 也可以是email格式的邮箱地址, 甚至是一组字符串形式的数字. 但是 Users 的前缀 system: 是系统保留的, 集群管理员应该确保普通用户不会使用这个前缀的格式
 ###### Groups 书写格式与 Users 相同, 都为一个字符串, 并且没有特定的格式要求; 同样 system: 前缀为系统保留
 
-#### 实践: 创建一个用户只能管理 dev 空间
+#### 实践1: 创建一个用户只能查看 cka 空间 (基于ServiceAccount)
+
+###### role.yaml
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: cka
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+```
+###### rolebinding.yaml
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rolebinding-pod-reader
+  namespace: cka
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-reader
+subjects:
+- kind: ServiceAccount
+  name: pod-reader
+  namespace: cka
+```
+
+```bash
+# 创建 namespace cka
+kubectl create namespace cka
+
+# 在 cka 下创建 ServiceAccount
+kubectl create serviceaccount pod-reader -n cka
+
+# 在 cka 下创建 Role
+kubectl create -f role.yaml
+
+# 在 cka 下创建 RoleBinding
+kubectl create -f rolebinding.yaml
+
+# 查看 secret, 从 secret 拿到 token
+kubectl get secret -n cka
+kubectl get secret pod-reader-token-pd8sd -n cka -o yaml | grep token: | awk '{print $2}' | base64 -d
+
+# 给新用户 ninejy 设置 credentials
+kubectl config set-credentials ninejy --token=$(kubectl get secret pod-reader-token-pd8sd -n cka -o yaml | grep token: | awk '{print $2}' | base64 -d)
+
+# 设置 context
+kubectl config set-context ninejy --cluster=kubernetes --user=ninejy
+
+# 使用 context
+kubectl config use-context ninejy
+
+# 查看 config
+kubectl config view
+
+# 执行 `kubectl get pod` 会报错 'Error from server (Forbidden): pods is forbidden', 因为现在用户 ninejy 只能在 cka 空间下查看 pod
+kubectl get pod -n cka
+```
+
+#### 实践2: 创建一个用户只能管理 dev 空间 (基于证书)
 ```bash
 # cat cert/devuser-csr.json
 {
