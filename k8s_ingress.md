@@ -112,7 +112,7 @@ spec:
 ---
 
 名称|描述|值
---- | --- | --- | ---
+--- | --- | ---
 nignx.ingress.kubernetes.io/rewrite-target|必须 重定向流量的目标URL|串
 nignx.ingress.kubernetes.io/ssl-redirect|指示位置是否仅可访问ssl(当Ingress包含证书时默认为true)|布尔
 nignx.ingress.kubernetes.io/force-ssl-redirect|即使ingress未启用tls, 也强制重定向到HTTPS|布尔
