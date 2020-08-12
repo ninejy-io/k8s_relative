@@ -28,7 +28,7 @@ spec:
   ports:
   - name: http
     port: 3000
-    targetPort: 
+    targetPort: http
     nodePort: 30100  # add this line
   selector:
     app: grafana
