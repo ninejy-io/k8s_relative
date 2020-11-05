@@ -55,7 +55,7 @@ spec:
   sessionAffinity: ClientIP
 ```
 ###### 修改 alertmanager-service.yaml, 使用 NodePort 方式
-```
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
