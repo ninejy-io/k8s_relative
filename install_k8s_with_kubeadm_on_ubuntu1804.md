@@ -3,24 +3,29 @@ Ubuntu 18.04
 docker 19.03
 kubeadm 1.18.2
 ```
-###### 设置主机名和hosts
+#### 设置主机名和hosts
 
 ```bash
 hostnamectl set-hostname k8s-master01
 hostnamectl set-hostname k8s-node01
-hostnamectl set-hostname k8s-node02
 
 # cat /etc/hosts
-192.168.152.168 k8s-master01
-192.168.152.128 k8s-node01
-192.168.152.147 k8s-node02
+192.168.0.3 k8s-master01
+192.168.0.6 k8s-node01
 ```
 
-###### 安装依赖包
+#### 关闭 swap
+```bash
+swapoff -a && sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+```
+
+#### 安装依赖包
 
 ```bash
 apt-get update -y && apt-get install -y ipvsadm conntrack socat apt-transport-https ca-certificates curl software-properties-common
 ```
+
+#### 配置内核参数
 
 ```bash
 lsmod | grep br_netfilter
@@ -55,7 +60,7 @@ apt-get install -y docker-ce=5:19.03.9~3-0~ubuntu-bionic
 docker version
 ```
 
-###### 配置加速源并配置docker的启动参数使用systemd
+#### 配置加速源并配置docker的启动参数使用systemd
 
 ```bash
 mkdir -p /etc/docker/
@@ -105,10 +110,10 @@ systemctl enable kubelet.service
 #### 下载镜像
 
 ```bash
-# download_images.sh
+# cat download_images.sh
 #!/bin/bash
 
-aliyun_images=(kube-apiserver-amd64:v1.18.2 kube-controller-manager-amd64:v1.18.2 kube-scheduler-amd64:v1.18.2 kube-proxy-amd64:v1.18.2 pause-amd64:3.2 etcd-amd64:3.4.3-0 coredns:1.6.7)
+aliyun_images=(kube-apiserver-amd64:v1.18.2 kube-controller-manager-amd64:v1.18.2 kube-scheduler-amd64:v1.18.2 kube-proxy-amd64:v1.18.2 pause-amd64:3.2 etcd-amd64:3.4.3-0)
 
 for image in ${aliyun_images[@]}
 do
@@ -117,8 +122,18 @@ do
     docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$image
 done
 
+docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/coredns:1.6.7
+docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/coredns:1.6.7 k8s.gcr.io/coredns:1.6.7
+
+docker pull ninejy/flannel:v0.13.0
+docker tag ninejy/flannel:v0.13.0 quay.io/coreos/flannel:v0.13.0
+#
+
 bash -x download_images.sh
 ```
+
+<!-- 以上操作 master/node 节点均需执行 -->
+
 
 #### 初始化主节点
 
@@ -138,7 +153,7 @@ bootstrapTokens:
   - authentication
 kind: InitConfiguration
 localAPIEndpoint:
-  advertiseAddress: 192.168.0.61
+  advertiseAddress: 192.168.0.3
   bindPort: 6443
 nodeRegistration:
   criSocket: /var/run/dockershim.sock
@@ -177,6 +192,13 @@ mode: ipvs
 kubeadm init --config=kubeadm-config.yaml --upload-certs | tee kubeadm-init.log
 ```
 
+#### 设置 kubectl 到k8s集群的认证配置
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
 #### 加入其它(node)节点
 
 ```bash
@@ -186,7 +208,15 @@ kubeadm init --config=kubeadm-config.yaml --upload-certs | tee kubeadm-init.log
 #### 部署网络
 
 ```bash
-# https://github.com/coreos/flannel/blob/master/Documentation/kube-flannel.yaml
+# https://github.com/coreos/flannel/blob/master/Documentation/kube-flannel.yml
 # 下载该文件
 kubectl apply -f kube-flannel.yaml
+```
+
+#### 查看集群节点和集群状态
+```bash
+kubectl get nodes
+kubectl get cs
+kubectl cluster-info
+kubectl get pod --all-namespaces
 ```

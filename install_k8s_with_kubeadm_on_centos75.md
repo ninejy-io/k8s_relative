@@ -246,7 +246,7 @@ kubectl apply -f https://github.com/coreos/flannel/blob/master/Documentation/kub
 ```
 #### 简单使用
 ```bash
-kubectl run nginx-deployment --image=harbor.ninejy.io/myapp:v1 --port=80 --replicas=1
+kubectl run nginx-deployment --image=ninejy/myapp:v1 --port=8080 --replicas=1
 kubectl get deployment
 kubectl get rs
 kubectl get pod -o wide
@@ -255,7 +255,7 @@ kubectl delete pod ${pod_name}
 kubectl get pod -o wide
 kubectl scale --replicas=3 deployment/nginx-deployment
 kubectl get pod -o wide
-kubectl expose deployment nginx-deployment --port=30000 --target-port=80
+kubectl expose deployment nginx-deployment --port=30000 --target-port=8080
 curl ${CLUSTER_IP}:30000  # 默认 svc type 为 CLSUTER-IP
 kubectl edit svc nginx-deployment  # 修改 svc type 为 NodePort
 curl ${node}:${hostPort}
