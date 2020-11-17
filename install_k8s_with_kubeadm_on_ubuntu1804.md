@@ -2,6 +2,9 @@
 Ubuntu 18.04
 docker 19.03
 kubeadm 1.18.2
+etcd 3.4.3
+coredns 1.6.7
+flannel v0.13.0
 ```
 #### 设置主机名和hosts
 
