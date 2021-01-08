@@ -284,4 +284,13 @@ kubectl cluster-info
 
 # 查看 etcd 集群状态
 kubectl -n kube-system exec etcd-k8s-master01 -- etcdctl --endpoints=https://192.168.0.61:2379 --ca-file=/etc/kubernetes/pki/etcd/ca.crt --cert-file=/etc/kubernetes/pki/etcd/server.crt --key-file=/etc/kubernetes/pki/etcd/server.key cluster-health
+
+# 同一客户端多集群连接配置
+KUBECONFIG=config-dev:config-test kubectl config view --flatten > $HOME/.kube/config
+
+# 切换集群
+kubectl config use-context dev
+
+# 查看当前可连接的集群
+kubectl config current-context
 ```
