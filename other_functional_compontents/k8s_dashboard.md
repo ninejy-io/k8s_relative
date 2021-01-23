@@ -1,4 +1,4 @@
-#### 使用 Helm 不是 dashboard
+#### 使用 Helm 部署 dashboard
 ---
 ###### kubenetes-dashboard.yaml
 ```yaml
@@ -33,5 +33,5 @@ kubectl eidt svc my-release-kubernetes-dashboard
 
 kubectl -n kube-system get secret | grep kubernetes-dashboard-token
 
-kubectl describe secret ${secretName}
+kubectl -n kube-system describe secret ${secretName}
 ```
