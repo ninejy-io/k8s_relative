@@ -11,7 +11,7 @@
 ###### Helm 包含两个组件: Helm 客户端和 Tiller 服务器, 如下图所示
 ![helm_tiller](images/helm_tiller.png)
 
-###### Helm 客户端负责 chart 和 release 的创建和管理以及和 Tiller 交互. Tiller 服务器运行在 kubernetes 集群中, 它会处理 helm 客户端的请求, 与 kubernetes API Server 交互
+###### Helm2 客户端负责 chart 和 release 的创建和管理以及和 Tiller 交互. Tiller 服务器运行在 kubernetes 集群中, 它会处理 helm 客户端的请求, 与 kubernetes API Server 交互
 
 #### Helm 部署
 ---
