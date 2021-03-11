@@ -40,6 +40,9 @@ metadata:
   name: myapp-deployment
 spec:
   replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
   template:
     metadata:
       labels:
