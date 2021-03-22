@@ -43,4 +43,6 @@ kubeadm alpha certs renew all --config=/root/install-k8s/core/kubeadm-config.yam
 # 到 /etc/kubenetes/pki 目录下查验
 cd /etc/kubenetes/pki
 openssl x509 -in apiserver.crt -text -noout
+# 或
+openssl x509 -in /etc/kubernetes/ssl/kubelet.pem -noout -dates
 ```
