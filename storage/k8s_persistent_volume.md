@@ -96,7 +96,7 @@ mkdir /nfsdata
 chmod 666 /nfsdata
 chown nfsnobody /nfsdata
 cat /etc/exports
-  /nfsdata *(rw,no_root_squash,no_all_squash,sync)
+  /nfsdata *(rw,no_subtree_check,no_root_squash,no_all_squash,sync)
 systemctl start rpcbind
 systemctl start nfs
 
