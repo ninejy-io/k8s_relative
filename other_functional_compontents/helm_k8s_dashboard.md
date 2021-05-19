@@ -1,6 +1,9 @@
 #### 使用 Helm 部署 dashboard
+
 ---
+
 ###### kubenetes-dashboard.yaml
+
 ```yaml
 image:
   repository: k8s.gcr.io/kubernetes-dashboard-amd64
