@@ -53,23 +53,34 @@ helm status happy-panda
 helm create hello-helm
 
 tree hello-helm
+```
 
+![helm3_tree](images/helm3/helm3.png)
+
+```bash
 # 修改文件 hello-helm/values.yaml
-#### image.tag, service.type
+#### image.tag = '1.16.0', service.type = NodePort
 helm install ./hello-helm --generate-name
 
 helm list
+```
 
+![helm-list](images/helm3/helm-list.png)
+
+```bash
 kubectl get deployment,pods,svc
+```
 
+![helm-release](images/helm3/helm-release.png)
+
+```bash
 curl http://192.168.0.61:31912
+```
 
+![result](images/helm3/result.png)
+
+```bash
 helm package hello-helm
 
 helm delete hello-helm-1621429639
 ```
-
-![helm3_tree](images/helm3/helm3.png)
-![helm-list](images/helm3/helm-list.png)
-![helm-release](images/helm3/helm-release.png)
-![result](images/helm3/result.png)
