@@ -1,8 +1,8 @@
-# Network
+# 六、Network
 
 ## flannel
 
-### 6.1 准备 flannel 资源清单
+### 6.1 准备 flannel 资源配置清单
 
 ```yaml
 # mkdir flannel
