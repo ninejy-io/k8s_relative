@@ -3,12 +3,13 @@
 ## 准备五台虚拟机 (2C/4G/50G)
 
 主机名 | IP | OS | 用途
--- | -- | --
+-- | -- | -- | --
 k8s-201.ninejy.io | 192.168.0.201 | Centos7.5 | bind9,ops
 k8s-202.ninejy.io | 192.168.0.202 | Centos7.5 | harbor,nginx
 k8s-203.ninejy.io | 192.168.0.203 | Centos7.5 | etcd,kube-master
 k8s-204.ninejy.io | 192.168.0.204 | Centos7.5 | etcd,kube-master
 k8s-205.ninejy.io | 192.168.0.205 | Centos7.5 | etcd,kube-node
+|| VIP: 192.168.0.200 ||
 
 ### 1.1 设置主机名
 
