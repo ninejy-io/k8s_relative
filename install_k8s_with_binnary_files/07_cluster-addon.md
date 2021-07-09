@@ -1303,10 +1303,375 @@ subjects:
 kubectl apply -f cluster-addon/dashboard/kubernetes-dashboard.yaml
 ```
 
-### 7.11 prometheus
+### 7.11 准备部署 prometheus 需要的文件
 
-### 7.12 prometheus
+- 准备命名空间和证书
 
-### 7.13 nfs-provisioner
+```bash
+# 创建命名空间
+kubectl create namespace monitoring
 
-### 7.14 nfs-provisioner
+# 准备 etcd-client 证书请求
+# mkdir -p /root/certs/prometheus
+# vim /root/certs/prometheus/etcd-client-csr.json
+{
+    "CN": "etcd-client",
+    "hosts": [],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+        "C": "CN",
+        "ST": "Shanghai",
+        "L": "XS",
+        "O": "k8s",
+        "OU": "System"
+        }
+    ]
+}
+
+# 创建 etcd-client 证书和私钥
+cfssl gencert \
+    -ca=ca.pem \
+    -ca-key=ca-key.pem \
+    -config=ca-config.json \
+    -profile=kubernetes etcd-client-csr.json | cfssljson -bare etcd-client
+
+# 创建 etcd-client-cert
+kubectl create secret generic -n monitoring etcd-client-cert \
+    --from-file=etcd-ca=ca.pem \
+    --from-file=etcd-client=etcd-client.pem \
+    --from-file=etcd-client-key=etcd-client-key.pem
+```
+
+- 准备 helm prometheus values 文件
+
+```yaml
+# mkdir cluster-addon/prometheus
+# vim cluster-addon/prometheus/prom-values.yaml
+
+## Provide a k8s version to auto dashboard import script example: kubeTargetVersionOverride: 1.16.6
+kubeTargetVersionOverride: "1.21.0"
+
+## Configuration for alertmanager
+alertmanager:
+  enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'null'
+      routes:
+      - match:
+          alertname: Watchdog
+        receiver: 'null'
+    receivers:
+    - name: 'null'
+
+  ## Configuration for Alertmanager service
+  service:
+    nodePort: 30902
+    type: NodePort 
+
+  alertmanagerSpec:
+    image:
+      repository: quay.io/prometheus/alertmanager
+      tag: v0.21.0
+
+    replicas: 1
+    retention: 120h
+
+    nodeSelector: {}
+
+## Using default values from https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml
+grafana:
+  enabled: true
+  defaultDashboardsEnabled: true
+  adminPassword: Admin1234!
+
+  service:
+    nodePort: 30903
+    type: NodePort 
+
+## Component scraping the kube api server
+kubeApiServer:
+  enabled: true
+
+## Component scraping the kubelet and kubelet-hosted cAdvisor
+kubelet:
+  enabled: true
+  namespace: kube-system
+
+## Component scraping the kube controller manager
+kubeControllerManager:
+  enabled: true
+  endpoints:
+  - 192.168.0.203
+  - 192.168.0.204
+
+## Component scraping coreDns. Use either this or kubeDns
+coreDns:
+  enabled: true
+
+## Component scraping etcd
+kubeEtcd:
+  enabled: true
+  endpoints:
+  - 192.168.0.203
+  - 192.168.0.204
+  - 192.168.0.205
+
+  ## Configure secure access to the etcd cluster by loading a secret into prometheus and
+  ## specifying security configuration below. For example, with a secret named etcd-client-cert
+  serviceMonitor:
+    scheme: https
+    insecureSkipVerify: true 
+    serverName: localhost
+    caFile: /etc/prometheus/secrets/etcd-client-cert/etcd-ca
+    certFile: /etc/prometheus/secrets/etcd-client-cert/etcd-client
+    keyFile: /etc/prometheus/secrets/etcd-client-cert/etcd-client-key
+
+
+## Component scraping kube scheduler
+kubeScheduler:
+  enabled: true
+  endpoints:
+  - 192.168.0.203
+  - 192.168.0.204
+
+## Component scraping kube proxy
+kubeProxy:
+  enabled: true
+  endpoints:
+  - 192.168.0.203
+  - 192.168.0.204
+  - 192.168.0.205
+
+## Manages Prometheus and Alertmanager components
+prometheusOperator:
+  enabled: true
+
+  ## Namespaces to scope the interaction of the Prometheus Operator and the apiserver (allow list).
+  ## This is mutually exclusive with denyNamespaces. Setting this to an empty object will disable the configuration
+  namespaces: {}
+    # releaseNamespace: true
+    # additional:
+    # - kube-system
+
+  ## Namespaces not to scope the interaction of the Prometheus Operator (deny list).
+  denyNamespaces: []
+
+  ## Filter namespaces to look for prometheus-operator custom resources
+  ##
+  alertmanagerInstanceNamespaces: []
+  prometheusInstanceNamespaces: []
+  thanosRulerInstanceNamespaces: []
+
+  service:
+    nodePort: 30899
+    nodePortTls: 30900
+    type: NodePort 
+
+  nodeSelector: {}
+
+  ## Prometheus-operator image
+  image:
+    repository: quay.io/prometheus-operator/prometheus-operator
+    tag: v0.44.0
+
+  ## Configmap-reload image to use for reloading configmaps
+  configmapReloadImage:
+    repository: docker.io/jimmidyson/configmap-reload
+    tag: v0.4.0
+
+  ## Prometheus-config-reloader image to use for config and rule reloading
+  prometheusConfigReloaderImage:
+    repository: quay.io/prometheus-operator/prometheus-config-reloader
+    tag: v0.44.0
+
+## Deploy a Prometheus instance
+prometheus:
+  enabled: true
+
+  ## Configuration for Prometheus service
+  service:
+    nodePort: 30901
+    type: NodePort 
+
+  ## Settings affecting prometheusSpec
+  ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#prometheusspec
+  prometheusSpec:
+    ## APIServerConfig
+    ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#apiserverconfig
+    apiserverConfig: {}
+
+    image:
+      repository: quay.io/prometheus/prometheus
+      tag: v2.22.1
+
+    replicas: 1
+
+    secrets:
+    - etcd-client-cert
+
+    storageSpec: {}
+    ## Using PersistentVolumeClaim
+    ##
+    #  volumeClaimTemplate:
+    #    spec:
+    #      storageClassName: gluster
+    #      accessModes: ["ReadWriteOnce"]
+    #      resources:
+    #        requests:
+    #          storage: 50Gi
+    #    selector: {}
+
+    ## Using tmpfs volume
+    ##
+    #  emptyDir:
+    #    medium: Memory
+```
+
+### 7.12 安装 prometheus
+
+```bash
+helm install -n monitoring prometheus \
+    -f cluster-addon/prometheus/prom-values.yaml \
+    cluster-addon/prometheus/files/kube-prometheus-stack-12.10.6.tgz
+```
+
+### 7.13 准备 kube-system 部署文件
+
+```yaml
+# mkdir -p cluster-addon/kube-system
+# vim cluster-addon/kube-system/kube-system.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nfs-client-provisioner
+  # replace with namespace where provisioner is deployed
+  namespace: kube-system
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nfs-client-provisioner-runner
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: run-nfs-client-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: nfs-client-provisioner
+    # replace with namespace where provisioner is deployed
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: nfs-client-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: leader-locking-nfs-client-provisioner
+  # replace with namespace where provisioner is deployed
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: leader-locking-nfs-client-provisioner
+  # replace with namespace where provisioner is deployed
+  namespace: kube-system
+subjects:
+  - kind: ServiceAccount
+    name: nfs-client-provisioner
+    # replace with namespace where provisioner is deployed
+    namespace: kube-system
+roleRef:
+  kind: Role
+  name: leader-locking-nfs-client-provisioner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-client-provisioner
+  labels:
+    app: nfs-client-provisioner
+  # replace with namespace where provisioner is deployed
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+          #image: gcr.io/k8s-staging-sig-storage/nfs-subdir-external-provisioner:v4.0.1
+          image: easzlab/nfs-subdir-external-provisioner:v4.0.1
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+            - name: PROVISIONER_NAME
+              value: k8s-sigs.io/nfs-subdir-external-provisioner
+            - name: NFS_SERVER
+              value: 192.168.0.10
+            - name: NFS_PATH
+              value: /data/nfs
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: 192.168.0.10
+            path: /data/nfs
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: managed-nfs-storage
+provisioner: k8s-sigs.io/nfs-subdir-external-provisioner
+parameters:
+  archiveOnDelete: "false"
+```
+
+### 7.14 kube-system
+
+```bash
+kubectl apply -f cluster-addon/kube-system/kube-system.yaml
+```
