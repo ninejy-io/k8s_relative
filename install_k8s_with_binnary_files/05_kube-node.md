@@ -1,8 +1,14 @@
-# k8s worker
+# k8s node
 
 ## k8s 运算节点安装
 
-### 4.1 准备 kubelet 证书签名请求
+### 5.1 创建 kube node 相关目录
+
+```bash
+mkdir -p /var/lib/kubelet /var/lib/kube-proxy /etc/cni/net.d
+```
+
+### 5.2 准备 kubelet 证书签名请求
 <!-- 注意: 以下步骤每个节点都是 IP 不一样 -->
 
 ```bash
@@ -30,7 +36,7 @@
 }
 ```
 
-### 4.2 创建 kubelet 证书与私钥
+### 5.3 创建 kubelet 证书与私钥
 
 ```bash
 cfssl gencert \
@@ -40,8 +46,8 @@ cfssl gencert \
     -profile=kubernetes 192.168.0.203-kubelet-csr.json | cfssljson -bare 192.168.0.203-kubelet
 
 # 拷贝证书文件到指定节点指定目录下
-cp 192.168.0.203-kubelet-key.pem /etc/kubernetes/ssl/kubelet-key.pem
-cp 192.168.0.203-kubelet.pem /etc/kubernetes/ssl/kubelet.pem
+scp 192.168.0.203-kubelet-key.pem 192.168.0.203:/etc/kubernetes/ssl/kubelet-key.pem
+scp 192.168.0.203-kubelet.pem 192.168.0.203:/etc/kubernetes/ssl/kubelet.pem
 
 scp 192.168.0.204-kubelet-key.pem 192.168.0.204:/etc/kubernetes/ssl/kubelet-key.pem
 scp 192.168.0.204-kubelet.pem 192.168.0.204:/etc/kubernetes/ssl/kubelet.pem
@@ -50,7 +56,7 @@ scp 192.168.0.205-kubelet-key.pem 192.168.0.205:/etc/kubernetes/ssl/kubelet-key.
 scp 192.168.0.205-kubelet.pem 192.168.0.205:/etc/kubernetes/ssl/kubelet.pem
 ```
 
-### 4.3 创建 kubelet 访问 kube-apiserver 的凭据
+### 5.4 创建 kubelet 访问 kube-apiserver 的凭据
 
 ```bash
 # 设置集群参数
@@ -75,7 +81,7 @@ kubectl config use-context default \
     --kubeconfig=/etc/kubernetes/kubelet.kubeconfig
 ```
 
-### 4.4 创建 kubelet 配置文件
+### 5.5 创建 kubelet 配置文件
 
 ```bash
 mkdir -p /etc/kubernetes/kubelet
@@ -149,20 +155,7 @@ tlsCertFile: /etc/kubernetes/ssl/kubelet.pem
 tlsPrivateKeyFile: /etc/kubernetes/ssl/kubelet-key.pem
 ```
 
-### 4.5 下载 cni 插件
-
-```bash
-wget https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz
-mkdir /opt/cni-plugins-linux-amd64-v0.9.1
-tar zxf cni-plugins-linux-amd64-v0.9.1.tgz -C /opt/cni-plugins-linux-amd64-v0.9.1
-
-cp /opt/cni-plugins-linux-amd64-v0.9.1/{bridge,host-local,loopback} /usr/local/bin/
-
-scp /opt/cni-plugins-linux-amd64-v0.9.1/{bridge,host-local,loopback} 192.168.0.204:/usr/local/bin/
-scp /opt/cni-plugins-linux-amd64-v0.9.1/{bridge,host-local,loopback} 192.168.0.205:/usr/local/bin/
-```
-
-### 4.6 准备 cni 配置文件
+### 5.6 准备 cni 配置文件
 
 ```bash
 mkdir -p /etc/cni/net.d
@@ -186,7 +179,7 @@ scp /etc/cni/net.d/10-default.conf 192.168.0.204:/etc/cni/net.d/10-default.conf
 scp /etc/cni/net.d/10-default.conf 192.168.0.205:/etc/cni/net.d/10-default.conf
 ```
 
-### 4.7 准备 kubelet systemd service 文件
+### 5.7 准备 kubelet systemd service 文件
 
 ```bash
 # vim /etc/systemd/system/kubelet.service
@@ -219,7 +212,7 @@ ExecStart=/usr/local/bin/kubelet \
   --image-pull-progress-deadline=5m \
   --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \
   --network-plugin=cni \
-  --pod-infra-container-image=harbor.ninejy.com/public/pause:latest \
+  --pod-infra-container-image=easzlab/pause-amd64:3.4.1 \
   --root-dir=/etc/kubernetes/kubelet \
   --v=2
 Restart=always
@@ -227,9 +220,13 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+
+# 启动 kubelet 服务
+systemctl enable kubelet
+systemctl start kubelet
 ```
 
-### 4.8 准备 kube-proxy 配置文件
+### 5.8 准备 kube-proxy 配置文件
 
 ```bash
 mkdir /etc/kubernetes/kube-proxy
@@ -237,7 +234,7 @@ mkdir /etc/kubernetes/kube-proxy
 # vim /etc/kubernetes/kube-proxy/kube-proxy-config.yaml
 kind: KubeProxyConfiguration
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
-bindAddress: {{ inventory_hostname }} 
+bindAddress: 192.168.0.203
 clientConnection:
   kubeconfig: "/etc/kubernetes/kube-proxy.kubeconfig"
 clusterCIDR: "172.20.0.0/24"
@@ -246,13 +243,13 @@ conntrack:
   min: 131072
   tcpCloseWaitTimeout: 1h0m0s
   tcpEstablishedTimeout: 24h0m0s
-healthzBindAddress: {{ inventory_hostname }}:10256
-hostnameOverride: "{{ inventory_hostname }}"
-metricsBindAddress: {{ inventory_hostname }}:10249
-mode: "{{ PROXY_MODE }}"
+healthzBindAddress: 192.168.0.203:10256
+hostnameOverride: 192.168.0.203
+metricsBindAddress: 192.168.0.203:10249
+mode: ipvs
 ```
 
-### 4.9 准备 kube-proxy systemd service 文件
+### 5.9 准备 kube-proxy systemd service 文件
 
 ```bash
 # vim /etc/systemd/system/kube-proxy.service
@@ -272,4 +269,14 @@ LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
+
+# 启动 kube-proxy 服务
+systemctl enable kube-proxy
+systemctl start kube-proxy
+```
+
+### 5.10 设置 node 标签
+
+```bash
+kubectl label node 192.168.0.205 kubernetes.io/role=node --overwrite
 ```

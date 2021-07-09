@@ -2,25 +2,7 @@
 
 ## k8s 主控节点安装
 
-### 3.1 下载 kubernetes 组件二进制文件
-
-```bash
-cd /opt/src
-wget https://dl.k8s.io/v1.20.8/kubernetes-server-linux-amd64.tar.gz
-tar zxf kubernetes-server-linux-amd64.tar.gz -C /opt/
-
-cp /opt/kubernetes/server/bin/kube-apiserver /usr/local/bin/
-cp /opt/kubernetes/server/bin/kube-scheduler /usr/local/bin/
-cp /opt/kubernetes/server/bin/kube-controller-manager /usr/local/bin/
-cp /opt/kubernetes/server/bin/kubectl /usr/local/bin/
-cp /opt/kubernetes/server/bin/kubelet /usr/local/bin/
-cp /opt/kubernetes/server/bin/kube-proxy /usr/local/bin/
-
-scp /usr/local/bin/kube* 192.168.0.204:/usr/local/bin/
-scp /usr/local/bin/kube* 192.168.0.205:/usr/local/bin/
-```
-
-### 3.2 创建 kubernetes 证书签名请求
+### 4.1 创建 kubernetes 证书签名请求
 
 ```bash
 # vim /root/certs/kubernetes-csr.json
@@ -55,7 +37,7 @@ scp /usr/local/bin/kube* 192.168.0.205:/usr/local/bin/
 }
 ```
 
-### 3.3 创建 kubernetes 证书和私钥
+### 4.2 创建 kubernetes 证书和私钥
 
 ```bash
 cfssl gencert \
@@ -70,7 +52,7 @@ cp kubernetes-key.pem kubernetes.pem /etc/kubernetes/ssl/
 scp /etc/kubernetes/ssl/{kubernetes-key.pem,kubernetes.pem} 192.168.0.204:/etc/kubernetes/ssl/
 ```
 
-### 3.4 创建 aggregator proxy 证书签名请求
+### 4.3 创建 aggregator proxy 证书签名请求
 
 ```bash
 # vim /root/certs/aggregator-proxy-csr.json
@@ -93,7 +75,7 @@ scp /etc/kubernetes/ssl/{kubernetes-key.pem,kubernetes.pem} 192.168.0.204:/etc/k
 }
 ```
 
-### 3.5 创建 aggregator-proxy 证书和私钥
+### 4.4 创建 aggregator-proxy 证书和私钥
 
 ```bash
 cfssl gencert \
@@ -108,7 +90,7 @@ cp aggregator-proxy-key.pem aggregator-proxy.pem /etc/kubernetes/ssl/
 scp /etc/kubernetes/ssl/{aggregator-proxy-key.pem,aggregator-proxy.pem} 192.168.0.204:/etc/kubernetes/ssl/
 ```
 
-### 3.6 准备 kube-apiserver systemd service 文件
+### 4.5 准备 kube-apiserver systemd service 文件
 
 ```bash
 # vim /etc/systemd/system/kube-apiserver.service
@@ -165,7 +147,7 @@ systemctl start kube-apiserver
 systemctl enable kube-apiserver
 ```
 
-### 3.7 配置 kube-apiserver 负载均衡及高可用
+### 4.6 配置 kube-apiserver 负载均衡及高可用
 
 ```bash
 # 192.168.0.203, 192.168.0.204
@@ -281,7 +263,7 @@ systemctl start keepalived
 systemctl enable keepalived
 ```
 
-### 3.11 准备 kube-controller-manager systemd service 文件
+### 4.7 准备 kube-controller-manager systemd service 文件
 
 ```bash
 # 192.168.0.204, 192.168.0.204 两个节点都有. 注意修改 IP
@@ -317,7 +299,7 @@ systemctl start kube-controller-manager
 systemctl enable kube-controller-manager
 ```
 
-### 3.15 创建 kube-scheduler 配置文件
+### 4.8 创建 kube-scheduler 配置文件
 
 ```bash
 # vim /etc/kubernetes/kube-scheduler-config.yaml
@@ -334,7 +316,7 @@ metricsBindAddress: 0.0.0.0:10251
 scp /etc/kubernetes/kube-scheduler-config.yaml 192.168.0.204:/etc/kubernetes/kube-scheduler-config.yaml
 ```
 
-### 3.16 准备 kube-scheduler systemd service 文件
+### 4.9 准备 kube-scheduler systemd service 文件
 
 ```bash
 # 192.168.0.204, 192.168.0.204 两个节点都有
@@ -358,7 +340,7 @@ systemctl start kube-scheduler
 systemctl enable kube-scheduler
 ```
 
-### 3.20 创建 user:kubernetes 角色绑定
+### 4.10 创建 user:kubernetes 角色绑定
 
 ```bash
 kubectl create clusterrolebinding kubernetes-crb --clusterrole=cluster-admin --user=kubernetes

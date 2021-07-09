@@ -2,39 +2,7 @@
 
 ## ETCD 安装
 
-### 2.1 创建基于根证书的 config 配置文件
-
-```bash
-# vim /root/certs/ca-config.json
-{
-    "signing": {
-        "default": {
-        "expiry": "876000h"
-        },
-        "profiles": {
-            "kubernetes": {
-                "usages": [
-                    "signing",
-                    "key encipherment",
-                    "server auth",
-                    "client auth"
-                ],
-                "expiry": "876000h"
-            }
-        },
-        "profiles": {
-            "kcfg": {
-                "usages": [
-                    "signing",
-                    "key encipherment",
-                    "client auth"
-                ],
-                "expiry": "876000h"
-            }
-        }
-    }
-}
-```
+### 2.1 准备 etcd 证书签名请求
 
 ```bash
 # vim /root/certs/etcd-csr.json
@@ -72,32 +40,17 @@ cfssl gencert \
     -config=ca-config.json \
     -profile=kubernetes etcd-csr.json | cfssljson -bare etcd
 
-# 拷贝根证书到录下
-cp etcd-key.pem etcd.pem /etc/kubernetes/ssl/
-
-scp /etc/kubernetes/ssl/{etcd-key.pem,etcd.pem} 192.168.0.204:/etc/kubernetes/ssl/
-scp /etc/kubernetes/ssl/{etcd-key.pem,etcd.pem} 192.168.0.205:/etc/kubernetes/ssl/
+# 分发证书
+scp etcd-key.pem etcd.pem 192.168.0.203:/etc/kubernetes/ssl/
+scp etcd-key.pem etcd.pem 192.168.0.204:/etc/kubernetes/ssl/
+scp etcd-key.pem etcd.pem 192.168.0.205:/etc/kubernetes/ssl/
 ```
 
-### 2.3 下载并安装配置 etcd
+### 2.3 安装配置 etcd
 
 ```bash
 # 创建 etcd 用户及目录
 useradd -s /sbin/nologin -M etcd
-
-mkdir /opt/src
-cd /opt/src
-wget https://github.com/etcd-io/etcd/releases/download/v3.4.16/etcd-v3.4.16-linux-amd64.tar.gz
-
-tar zxf etcd-v3.4.16-linux-amd64.tar.gz -C /opt/
-
-cd /opt/etcd-v3.4.16-linux-amd64
-
-# 拷贝 etcd 可执行文件到 /usr/local/bin/ 目录下
-cp etcd etcdctl /usr/local/bin/
-
-scp /usr/local/bin/{etcd,etcdctl} 192.168.0.204:/usr/local/bin/
-scp /usr/local/bin/{etcd,etcdctl} 192.168.0.205:/usr/local/bin/
 
 # 创建 etcd 数据目录
 mkdir -p /data/etcd

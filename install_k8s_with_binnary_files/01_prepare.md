@@ -41,7 +41,18 @@ systemctl restart network
 # 其他几台同样的设置只需改下IP
 ```
 
-### 1.3 安装 epel-release 和替换基础源
+### 1.3 配置 192.168.0.201 到其他节点免密登录
+
+```bash
+ssh-keygen
+
+ssh-copy-id 192.168.0.202
+ssh-copy-id 192.168.0.203
+ssh-copy-id 192.168.0.204
+ssh-copy-id 192.168.0.205
+```
+
+### 1.4 安装 epel-release 和替换基础源
 
 ```bash
 # yum install -y epel-release
@@ -49,7 +60,7 @@ curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo
 curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo
 ```
 
-### 1.4 关闭 selinux 和 firewalld
+### 1.5 关闭 selinux 和 swap
 
 ```bash
 # /etc/selinux/config
@@ -57,25 +68,151 @@ curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos
 setenforce 0
 getenforce
 
-systemctl stop firewalld
+swapoff -a && sysctl -w vm.swappiness=0
+
+# 文件 /etc/fstab 中 swap 相关的注释掉
 ```
 
-### 1.5 安装一些常用工具
+### 1.6 安装一些常用工具 / 卸载一些不必要的包
 
 ```bash
+yum remove -y firewalld python-firewall firewalld-filesystem
+
 yum install wget net-tools telnet tree nmap sysstat lrzsz dos2unix bind-utils -y
+
+yum install -y bash-completion conntrack-tools ipset ipvsadm libseccomp nfs-utils psmisc rsync socat
 ```
 
-### 1.6 下载生成证书的工具
+### 1.7 优化日志相关的设置, 避免日志重复搜集, 浪费系统资源
 
 ```bash
+# 禁止 rsyslog 获取 journald 日志1
+# 注释掉 '$ModLoad imjournal' 这一行
+# grep 'ModLoad imjournal' /etc/rsyslog.conf
+# #$ModLoad imjournal # provides access to the systemd journal
+
+# 禁止 rsyslog 获取 journald 日志2
+# 注释掉 '$IMJournalStateFile' 这一行
+# grep 'IMJournalStateFile' /etc/rsyslog.conf
+# #$IMJournalStateFile imjournal.state
+
+# 重启 rsyslog 服务
+systemctl restart rsyslog
+```
+
+### 1.8 加载内核模块
+
+```bash
+# 加载内核模块
+modprobe br_netfilter
+modprobe ip_vs
+modprobe ip_vs_rr
+modprobe ip_vs_wrr
+modprobe ip_vs_sh
+modprobe nf_conntrack # 内核版本 >= 4.19
+modprobe nf_conntrack_ipv4 # 内核版本 < 4.19
+
+# 启用 systemd 自动加载模块服务
+systemctl enable systemd-modules-load
+
+# 增加内核模块开机加载配置
+# vim /etc/modules-load.d/10-k8s-modules.conf
+br_netfilter
+ip_vs
+ip_vs_rr
+ip_vs_wrr
+ip_vs_sh
+nf_conntrack_ipv4 # 内核版本 < 4.19
+nf_conntrack # 内核版本 >= 4.19
+```
+
+### 1.9 设置系统参数
+
+```bash
+# 消除docker info 警告WARNING: bridge-nf-call-ip[6]tables is disabled
+# https://success.docker.com/article/ipvs-connection-timeout-issue 缩短keepalive_time超时时间为600s
+
+# vim /etc/sysctl.d/95-k8s-sysctl.conf
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-arptables = 1
+net.ipv4.tcp_tw_recycle = 0 # 内核版本 < 4.12
+net.ipv4.tcp_tw_reuse = 0
+net.core.somaxconn = 32768
+net.netfilter.nf_conntrack_max=1000000
+vm.swappiness = 0
+vm.max_map_count=655360
+fs.file-max=6553600
+net.ipv4.tcp_keepalive_time = 600  # PROXY_MODE = "ipvs"
+net.ipv4.tcp_keepalive_intvl = 30  # PROXY_MODE = "ipvs"
+net.ipv4.tcp_keepalive_probes = 10 # PROXY_MODE = "ipvs"
+
+# 生效系统参数
+sysctl -p /etc/sysctl.d/95-k8s-sysctl.conf
+```
+
+### 1.10 设置系统 ulimits
+
+```bash
+# 创建 systemd 配置目录
+mkdir -p /etc/systemd/system.conf.d
+
+# vim /etc/systemd/system.conf.d/30-k8s-ulimits.conf
+[Manager]
+DefaultLimitCORE=infinity
+DefaultLimitNOFILE=100000
+DefaultLimitNPROC=100000
+```
+
+### 1.11 把 SCTP 列入内核模块黑名单
+
+```bash
+# vim /etc/modprobe.d/sctp.conf
+# put sctp into blacklist
+install sctp /bin/true
+```
+
+### 1.12 下载需要的二进制文件
+
+```bash
+# 下载生成证书的工具
 wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64 -O /usr/local/bin/cfssl
 wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64 -O /usr/local/bin/cfssljson
 wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64 -O /usr/local/bin/cfssl-certinfo
 chmod +x /usr/local/bin/cfssl*
+
+# 下载 k8s 组件
+wget https://dl.k8s.io/v1.21.0/kubernetes-server-linux-amd64.tar.gz
+
+tar zxf kubernetes-server-linux-amd64.tar.gz
+scp kubernetes/server/bin/{kubectl,kube-apiserver,kube-controller-manager,kube-scheduler} 192.168.0.203:/usr/local/bin/
+scp kubernetes/server/bin/{kubectl,kube-apiserver,kube-controller-manager,kube-scheduler} 192.168.0.204:/usr/local/bin/
+
+scp kubernetes/server/bin/{kubelet,kube-proxy} 192.168.0.203:/usr/local/bin/
+scp kubernetes/server/bin/{kubelet,kube-proxy} 192.168.0.204:/usr/local/bin/
+scp kubernetes/server/bin/{kubelet,kube-proxy} 192.168.0.205:/usr/local/bin/
+
+# 下载 etcd
+wget https://github.com/etcd-io/etcd/releases/download/v3.4.16/etcd-v3.4.16-linux-amd64.tar.gz
+
+tar zxf etcd-v3.4.16-linux-amd64.tar.gz
+
+scp etcd-v3.4.16-linux-amd64/{etcd,etcdctl} 192.168.0.203:/usr/local/bin/
+scp etcd-v3.4.16-linux-amd64/{etcd,etcdctl} 192.168.0.204:/usr/local/bin/
+scp etcd-v3.4.16-linux-amd64/{etcd,etcdctl} 192.168.0.205:/usr/local/bin/
+
+# 下载 cni 插件
+wget https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz
+
+tar zxf cni-plugins-linux-amd64-v0.9.1.tgz
+
+scp cni-plugins-linux-amd64-v0.9.1/{bridge,host-local,loopback,portmap,flannel} 192.168.0.203:/usr/local/bin/
+scp cni-plugins-linux-amd64-v0.9.1/{bridge,host-local,loopback,portmap,flannel} 192.168.0.204:/usr/local/bin/
+scp cni-plugins-linux-amd64-v0.9.1/{bridge,host-local,loopback,portmap,flannel} 192.168.0.205:/usr/local/bin/
 ```
 
-### 1.7 准备 CA 配置文件和签名请求
+### 1.13 准备 CA 配置文件和签名请求
 
 ```bash
 mkdir -p /root/certs /etc/kubernetes
@@ -132,13 +269,13 @@ cd /root/certs
 }
 ```
 
-### 1.8 生成 CA 证书和私钥
+### 1.14 生成 CA 证书和私钥
 
 ```bash
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 ```
 
-### 1.9 创建配置文件: /root/.kube/config
+### 1.15 创建配置文件: /root/.kube/config
 
 ```bash
 # 准备 kubectl 使用的 admin 证书签名请求
@@ -194,7 +331,7 @@ mkdir ~/.kube
 cp /etc/kubernetes/kubectl.kubeconfig ~/.kube/config
 ```
 
-### 1.10 创建配置文件: kube-controller-manager.kubeconfig
+### 1.16 创建配置文件: kube-controller-manager.kubeconfig
 
 ```bash
 # 准备 kube-controller-manager 证书签名请求
@@ -247,7 +384,7 @@ kubectl config use-context default \
     --kubeconfig=/etc/kubernetes/kube-controller-manager.kubeconfig
 ```
 
-### 1.11 创建配置文件: kube-scheduler.kubeconfig
+### 1.17 创建配置文件: kube-scheduler.kubeconfig
 
 ```bash
 # 准备 kube-scheduler 证书签名请求
@@ -300,7 +437,7 @@ kubectl config use-context default \
     --kubeconfig=/etc/kubernetes/kube-scheduler.kubeconfig
 ```
 
-### 1.12 创建配置文件: kube-proxy.kubeconfig
+### 1.18 创建配置文件: kube-proxy.kubeconfig
 
 ```bash
 # 准备 kube-proxy 证书签名请求
