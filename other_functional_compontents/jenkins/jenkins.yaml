@@ -1,0 +1,67 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: jenkins
+  namespace: infra
+  labels:
+    name: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: jenkins
+  template:
+    metadata:
+      labels:
+        name: jenkins
+        app: jenkins
+    spec:
+      volumes:
+      - name: jenkins-home
+        nfs:
+          server: 192.168.0.201
+          path: /data/nfs/jenkins_home
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+          type: ''
+      containers:
+      - name: jenkins
+        image: harbor.ninejy.com/infra/jenkins:2.289.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: JAVA_OPTS
+          value: -Xms1024m -Xmx1024m
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /var/jenkins_home
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+      imagePullSecrets:
+      - name: harbor
+      securityContext:
+        runAsUser: 0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  revisionHistoryLimit: 7
+  progressDeadlineSeconds: 600
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: jenkins
+  namespace: infra
+spec:
+  type: NodePort
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  selector:
+    app: jenkins
