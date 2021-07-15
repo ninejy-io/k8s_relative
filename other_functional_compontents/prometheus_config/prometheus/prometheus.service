@@ -1,0 +1,17 @@
+[Unit]
+Description=prometheus.service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/data/prom/prometheus-2.25.2.linux-amd64/prometheus \
+	--config.file=/data/prom/prometheus-2.25.2.linux-amd64/prometheus.yml \
+	--web.enable-lifecycle \
+	--storage.tsdb.retention.time=90d \
+	--storage.tsdb.path=/data/prom/prometheus-2.25.2.linux-amd64/data/
+ExecReload=/usr/bin/kill -HUP $MAINPID
+TimeoutStopSec=20s
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

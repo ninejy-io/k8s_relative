@@ -1,0 +1,28 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.qq.com:25'
+  smtp_from: 'xxxx@163.com'
+  smtp_auth_username: 'xxxx@163.com'
+  smtp_auth_password: '*********'
+  smtp_require_tls: false
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 1h
+  repeat_interval: 4h
+  receiver: AlertMail
+  # receiver: dingtalk
+  routes:
+    - receiver: dingtalk
+      match:
+        severity: critical
+
+receivers:
+- name: 'AlertMail'
+  email_configs:
+  - to: 'xxxx@163.com'
+- name: dingtalk
+  webhook_configs:
+  - send_resolved: false
+    url: 'http://127.0.0.1:8090/dingtalk/alert'

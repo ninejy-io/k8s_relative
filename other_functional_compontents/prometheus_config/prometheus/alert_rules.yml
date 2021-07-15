@@ -1,0 +1,80 @@
+groups:
+- name: my_group
+  rules:
+  - alert: PortDown
+    expr: probe_success == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Port {{ $labels.purpose }} down"
+      description: "{{ $labels.purpose }} port has been down for more than 1 minutes."
+      value: "{{ $value }}"
+  - alert: InstanceDownOrRestarted
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} down or restarted"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has been down or restarted for more than 1 minutes."
+      value: "{{ $value }}"
+
+  - alert: HostOutOfMemory
+    expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 5
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Host out of memory (instance {{ $labels.instance }})"
+      description: "Node memory is filling up (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+      value: "{{ $value }}"
+
+  - alert: HostOutOfDiskSpace
+    expr: (node_filesystem_avail_bytes * 100) / node_filesystem_size_bytes < 5 and ON (instance, device, mountpoint) node_filesystem_readonly == 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Host out of disk space (instance {{ $labels.instance }})"
+      description: "Disk is almost full (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+      value: "{{ $value }}"
+
+  - alert: HostHighCpuLoad
+    expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 90
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host high CPU load (instance {{ $labels.instance }})"
+      description: "CPU load is > 90%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+      value: "{{ $value }}"
+
+  - alert: GPUHighUtilization
+    expr: gpu_utilization > 90
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "GPU utilization (instance {{ $labels.instance }})"
+      description: "GPU utilization is > 90%\n VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+      value: "{{ $value }}"
+
+  - alert: GPUHighTemperature
+    expr: gpu_temperature > 75
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "GPU temperature (instance {{ $labels.instance }})"
+      description: "GPU temperature is > 75\n VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+      value: "{{ $value }}"
+
+  - alert: SSL Cert Will Expire in 10 days
+    expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "SSL certificate will expire soon on (instance {{ $labels.instance }})"
+      description: "SSL certificate expires in 10 days\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

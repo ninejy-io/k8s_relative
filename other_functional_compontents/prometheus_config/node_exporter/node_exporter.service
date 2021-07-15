@@ -1,0 +1,9 @@
+[Unit]
+Description=Node Exporter
+
+[Service]
+User=node_exporter
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9101 --web.disable-exporter-metrics
+
+[Install]
+WantedBy=multi-user.target
