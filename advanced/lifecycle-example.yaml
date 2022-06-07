@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-nacos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: php-nacos
+  template:
+    metadata:
+      labels:
+        app: php-nacos
+    spec:
+      containers:
+      - name: php-nacos
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "php /var/www/html/get_nacos_config.php"]
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","sleep 30"]
+        image: docker.io/ninejy/php:7.2-fpm-alpine-nacos
+        ports:
+        - containerPort: 9000
