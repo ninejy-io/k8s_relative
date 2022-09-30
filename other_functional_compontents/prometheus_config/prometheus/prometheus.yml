@@ -72,3 +72,20 @@ scrape_configs:
     static_configs:
     - targets:
       - 10.32.0.31:9100
+
+    # 使用 monitor 用户秘钥 有ec2和cloudwatch只读权限
+  - job_name: 'aws_ec2_test'
+    ec2_sd_configs:
+      - region: ap-east-1
+        access_key: xxx
+        secret_key: xxoo
+        port: 9100
+    relabel_configs:
+      - source_labels:
+        - '__meta_ec2_tag_Name'
+        - '__meta_ec2_private_ip'
+        separator: "@"
+        target_label: 'instance'
+      - source_labels:
+        - '__meta_ec2_instance_state'
+        target_label: 'instance_state'
