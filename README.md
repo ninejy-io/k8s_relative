@@ -12,6 +12,8 @@
 
 - [DaemonSet example](k8s_daemonset.md)
 
+- [StatefulSet example](k8s_statefulset.md)
+
 - [Job/CronJob example](k8s_job_cronjob.md)
 
 - [Service](k8s_service.md)
