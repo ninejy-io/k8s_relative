@@ -2,7 +2,7 @@
 
 - [harbor安装及应用](harbor.md)
 
-- [Kubeadm安装k8s](install_k8s_with_kubeadm_on_ubuntu1804.md)
+- [Kubeadm安装k8s](k8s-install/install_k8s_with_kubeadm_on_ubuntu1804.md)
 
 - [Pod探测](k8s_pod_probe.md)
 
