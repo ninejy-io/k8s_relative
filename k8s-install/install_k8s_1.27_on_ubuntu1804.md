@@ -68,7 +68,7 @@
   # sandbox_image = "registry.k8s.io/pause:3.9"
   
   # 设置 containerd 开机启动
-  systemctl enable containerd
+  systemctl enable containerd && systemctl start containerd
   # containerd
   ```
 
@@ -118,7 +118,7 @@
   ctr --namespace=k8s.io image tag ${registry_mirror}/coredns:v1.10.1 registry.k8s.io/coredns/coredns:v1.10.1
   
   # 初始化 k8s 集群
-  kubeadm init --kubernetes-version=v1.27.1 --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.100.38 --cri-socket unix:///var/run/containerd/containerd.sock
+  kubeadm init --kubernetes-version=v1.27.1 --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.100.38 --cri-socket unix:///var/run/containerd/containerd.sock | tee kubeadm-init.log
   
   # 加入 worker 节点，命令从下面输出中复制 kubeadm join xxx
   
@@ -206,4 +206,31 @@
 
   ```bash
   kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
+  kubectl -n kube-flannel get pods
+  ```
+
+- 安装 ingress-nginx
+
+  ```bash
+  # https://kubernetes.github.io/ingress-nginx/deploy/#quick-start
+  # 先找出镜像从国内镜像仓库下载好
+
+  export registry_mirror="registry.cn-hangzhou.aliyuncs.com/google_containers"
+  crictl pull ${registry_mirror}/nginx-ingress-controller:v1.7.0
+  crictl pull ${registry_mirror}/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794
+
+  ctr --namespace=k8s.io image tag ${registry_mirror}/nginx-ingress-controller:v1.7.0 registry.k8s.io/ingress-nginx/controller:v1.7.0
+  ctr --namespace=k8s.io image tag ${registry_mirror}/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794 registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794
+
+  # 创建 ingress-nginx controller
+  wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.7.0/deploy/static/provider/cloud/deploy.yaml
+
+  # 修改镜像, 把@后面的全删掉
+  # registry.k8s.io/ingress-nginx/controller:v1.7.0@sha256:7612338342a1e7b8090bef78f2a04fffcadd548ccaabe8a47bf7758ff549a5f7
+  # registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794@sha256:01d181618f270f2a96c04006f33b2699ad3ccb02da48d0f89b22abce084b292f
+
+  kubectl apply -f deploy.yaml
+
+  kubectl -n ingress-nginx get pods
   ```
