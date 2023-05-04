@@ -210,6 +210,19 @@
   kubectl -n kube-flannel get pods
   ```
 
+- 安装 metrics-server
+
+  ```bash
+  export registry_mirror="registry.cn-hangzhou.aliyuncs.com/google_containers"
+  crictl pull ${registry_mirror}/metrics-server:v0.6.3
+  ctr --namespace=k8s.io image tag ${registry_mirror}/metrics-server:v0.6.3 registry.k8s.io/metrics-server/metrics-server:v0.6.3
+
+  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+  # metrics-server 启动会有 x509 的错误, 参照下面的链接处理
+  # https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/#kubelet-serving-certs
+  ```
+
 - 安装 ingress-nginx
 
   ```bash
