@@ -121,6 +121,10 @@
   kubeadm init --kubernetes-version=v1.27.1 --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.100.38 --cri-socket unix:///var/run/containerd/containerd.sock | tee kubeadm-init.log
   
   # 加入 worker 节点，命令从下面输出中复制 kubeadm join xxx
+  # 时间旧了token会过期, 需要在master节点重新生成
+  kubeadm token generate
+  # mw0352.eux5lxe65dt15b95
+  kubeadm token create mw0352.eux5lxe65dt15b95 --print-join-command --ttl=0
   
   # 如果有问题需要重新初始化要先执行 kubeadm reset
   ```
