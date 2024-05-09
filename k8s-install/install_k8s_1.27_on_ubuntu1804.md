@@ -251,3 +251,22 @@
 
   kubectl -n ingress-nginx get pods
   ```
+
+- 安装 openelb
+
+```bash
+export registry_mirror="registry.cn-hangzhou.aliyuncs.com/google_containers"
+crictl pull ${registry_mirror}/kube-webhook-certgen:v1.1.1
+ctr --namespace=k8s.io image tag ${registry_mirror}/kube-webhook-certgen:v1.1.1 registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
+
+wget https://raw.githubusercontent.com/openelb/openelb/release-0.5/deploy/openelb.yaml
+kubectl apply -f openelb.yaml
+
+kubectl -n openelb-system get pods
+
+# BGP 模式使用
+# https://openelb.io/docs/getting-started/usage/use-openelb-in-bgp-mode/
+
+# VIP 模式使用
+# https://openelb.io/docs/getting-started/usage/use-openelb-in-vip-mode/
+```
